@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gute CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#F5F0E8; --card:#FFFDF8; --ink:#1A1208; --ink-soft:#7A6E5F;
+    --accent:#C4622D; --accent-light:#F2E0D5; --border:#E2D9CB;
+    --success:#4A7C59; --warning:#C4962D; --danger:#C4322D;
+    --shadow:0 2px 16px rgba(26,18,8,0.08); --radius:12px;
+  }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--ink); min-height:100vh;
+    background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C4622D' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .login-card {
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    padding:48px 40px; width:100%; max-width:400px; box-shadow:0 8px 48px rgba(26,18,8,0.12);
+    animation: fadeUp 0.4s ease;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .login-logo { font-family:'Playfair Display',serif; font-size:2rem; font-weight:600; text-align:center; margin-bottom:8px; }
+  .login-logo span { color:var(--accent); }
+  .login-sub { text-align:center; color:var(--ink-soft); font-size:0.85rem; margin-bottom:36px; }
+  .login-group { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+  .login-group label { font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); }
+  .login-group input { font-family:'DM Sans',sans-serif; font-size:0.95rem; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px; background:var(--bg); color:var(--ink); outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+  .login-group input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,98,45,0.12); }
+  .login-btn { width:100%; padding:13px; background:var(--accent); color:white; border:none; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:1rem; font-weight:500; cursor:pointer; margin-top:8px; transition:all 0.15s; }
+  .login-btn:hover { background:#A8501F; transform:translateY(-1px); }
+  .login-error { background:#FDEAEA; color:var(--danger); border-radius:8px; padding:10px 14px; font-size:0.85rem; margin-top:12px; display:none; }
+
+  /* ── APP ── */
+  #appScreen { display:none; }
+  header {
+    background:var(--ink); color:#F5F0E8; padding:16px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100; box-shadow:0 2px 24px rgba(26,18,8,0.25);
+  }
+  .logo { font-family:'Playfair Display',serif; font-size:1.5rem; font-weight:600; letter-spacing:-0.02em; }
+  .logo span { color:#C4622D; }
+  .header-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .header-meta { display:flex; gap:14px; align-items:center; }
+  .header-date { font-size:0.72rem; color:#9A8E80; font-weight:300; letter-spacing:0.05em; text-transform:uppercase; }
+  #syncStatus { font-size:0.72rem; font-weight:500; }
+  .user-badge { font-size:0.75rem; background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; color:#F5F0E8; display:flex; align-items:center; gap:8px; }
+  .user-badge button { background:none; border:none; color:#C4622D; cursor:pointer; font-size:0.75rem; font-family:'DM Sans',sans-serif; padding:0; }
+  .tab-nav { display:flex; gap:3px; background:rgba(255,255,255,0.07); border-radius:8px; padding:3px; }
+  .tab-btn { font-family:'DM Sans',sans-serif; font-size:0.8rem; font-weight:500; padding:6px 14px; border:none; border-radius:6px; cursor:pointer; background:transparent; color:#9A8E80; transition:all 0.2s; }
+  .tab-btn.active { background:var(--accent); color:white; }
+
+  main { max-width:960px; margin:0 auto; padding:32px 20px; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:var(--shadow); transition:transform 0.15s; }
+  .stat-card:hover { transform:translateY(-2px); }
+  .stat-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:6px; }
+  .stat-value { font-family:'Playfair Display',serif; font-size:2rem; font-weight:600; line-height:1; }
+  .stat-value.accent{color:var(--accent)} .stat-value.success{color:var(--success)} .stat-value.warning{color:var(--warning)}
+
+  /* FORM */
+  .form-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:28px; box-shadow:var(--shadow); margin-bottom:28px; }
+  .form-title { font-family:'Playfair Display',serif; font-size:1.2rem; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+  .form-title::before { content:''; display:block; width:4px; height:20px; background:var(--accent); border-radius:2px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group.full { grid-column:1/-1; }
+  label { font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); }
+  input,select,textarea { font-family:'DM Sans',sans-serif; font-size:0.95rem; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; background:var(--bg); color:var(--ink); outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+  input:focus,select:focus,textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,98,45,0.12); }
+  textarea { resize:vertical; min-height:80px; }
+  .btn-row { display:flex; gap:10px; margin-top:4px; }
+  button { font-family:'DM Sans',sans-serif; font-weight:500; font-size:0.9rem; padding:10px 22px; border:none; border-radius:8px; cursor:pointer; transition:all 0.15s; }
+  .btn-primary { background:var(--accent); color:white; flex:1; }
+  .btn-primary:hover { background:#A8501F; transform:translateY(-1px); }
+  .btn-secondary { background:transparent; border:1.5px solid var(--border); color:var(--ink-soft); }
+  .btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-danger { background:transparent; border:1.5px solid var(--danger); color:var(--danger); }
+  .btn-danger:hover { background:#FDEAEA; }
+
+  /* LIST */
+  .filters-row { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+  .filter-btn { padding:7px 16px; font-size:0.82rem; background:var(--card); border:1.5px solid var(--border); color:var(--ink-soft); border-radius:20px; }
+  .filter-btn.active { background:var(--ink); color:white; border-color:var(--ink); }
+  .search-input { margin-left:auto; padding:7px 14px; font-size:0.85rem; min-width:200px; }
+  .section-title { font-family:'Playfair Display',serif; font-size:1.2rem; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+  .section-title::before { display:none; }
+  .activity-list { display:flex; flex-direction:column; gap:10px; }
+  .activity-item { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; display:grid; grid-template-columns:auto 1fr auto auto; gap:14px; align-items:start; box-shadow:var(--shadow); transition:transform 0.15s,box-shadow 0.15s; animation:slideIn 0.3s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .activity-item:hover { transform:translateY(-2px); box-shadow:0 6px 24px rgba(26,18,8,0.12); }
+  .activity-dot { width:10px; height:10px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+  .dot-Reunião{background:#4A7C59} .dot-Ligação{background:#2D6DC4} .dot-Tarefa{background:#C4622D}
+  .dot-Email{background:#7C4A7C} .dot-Visita{background:#C4962D} .dot-Outros{background:#7A6E5F}
+  .activity-body { min-width:0; }
+  .activity-title { font-weight:500; font-size:0.95rem; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .activity-meta { font-size:0.78rem; color:var(--ink-soft); display:flex; gap:12px; flex-wrap:wrap; }
+  .activity-notes { font-size:0.82rem; color:var(--ink-soft); margin-top:6px; line-height:1.5; }
+  .badge { font-size:0.72rem; font-weight:500; padding:3px 10px; border-radius:20px; white-space:nowrap; align-self:flex-start; }
+  .badge-Concluído{background:#E8F3EB;color:#4A7C59}
+  .badge-Em\ andamento{background:#EDF3FC;color:#2D6DC4}
+  .badge-Pendente{background:#FDF3E8;color:#C4962D}
+  .badge-Cancelado{background:#FDEAEA;color:#C4322D}
+  .action-btns { display:flex; gap:6px; align-self:flex-start; }
+  .icon-btn { width:30px; height:30px; border-radius:6px; border:1px solid var(--border); background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:0.9rem; transition:all 0.15s; padding:0; }
+  .icon-btn:hover { border-color:var(--accent); background:var(--accent-light); }
+  .icon-btn.delete:hover { border-color:var(--danger); background:#FDEAEA; }
+  .empty-state { text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .empty-icon { font-size:3rem; margin-bottom:12px; }
+  .empty-state p { font-size:0.9rem; }
+
+  /* ADMIN */
+  .admin-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .users-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .user-item { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .user-info { display:flex; flex-direction:column; gap:2px; }
+  .user-name { font-weight:500; font-size:0.9rem; }
+  .user-email { font-size:0.78rem; color:var(--ink-soft); }
+  .user-role { font-size:0.7rem; font-weight:500; padding:2px 8px; border-radius:20px; }
+  .role-admin { background:#F2E0D5; color:var(--accent); }
+  .role-user  { background:#E8F3EB; color:var(--success); }
+  .admin-error { background:#FDEAEA; color:var(--danger); border-radius:8px; padding:10px 14px; font-size:0.85rem; margin-top:10px; display:none; }
+  .admin-success { background:#E8F3EB; color:var(--success); border-radius:8px; padding:10px 14px; font-size:0.85rem; margin-top:10px; display:none; }
+
+  /* CHARTS */
+  .period-row { display:flex; gap:8px; margin-bottom:24px; }
+  .period-btn { padding:6px 16px; font-size:0.8rem; background:var(--card); border:1.5px solid var(--border); color:var(--ink-soft); border-radius:20px; }
+  .period-btn.active { background:var(--ink); color:white; border-color:var(--ink); }
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow); }
+  .chart-card.wide { grid-column:1/-1; }
+  .chart-heading { font-family:'Playfair Display',serif; font-size:1rem; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+  .chart-heading::before { content:''; display:block; width:3px; height:16px; background:var(--accent); border-radius:2px; }
+  .chart-box { position:relative; height:210px; }
+  .chart-box.tall { height:260px; }
+  .no-data { height:210px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--ink-soft); font-size:0.85rem; gap:8px; }
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(26,18,8,0.5); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--card); border-radius:16px; padding:32px; width:90%; max-width:520px; box-shadow:0 24px 64px rgba(26,18,8,0.3); animation:modalIn 0.2s ease; }
+  @keyframes modalIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+  .modal-title { font-family:'Playfair Display',serif; font-size:1.3rem; margin-bottom:24px; }
+
+
+  /* IMAGE NOTES */
+  .notes-editor {
+    font-family:'DM Sans',sans-serif; font-size:0.95rem; padding:10px 14px;
+    border:1.5px solid var(--border); border-radius:8px; background:var(--bg);
+    color:var(--ink); outline:none; transition:border-color 0.2s,box-shadow 0.2s;
+    min-height:80px; max-height:300px; overflow-y:auto; line-height:1.6;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .notes-editor:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(196,98,45,0.12); }
+  .notes-editor:empty::before { content:attr(data-placeholder); color:#9A8E80; pointer-events:none; }
+  .notes-editor img { max-width:100%; max-height:240px; border-radius:6px; margin:4px 0; display:block; }
+  .notes-hint { font-size:0.72rem; color:var(--ink-soft); margin-top:4px; }
+  .activity-notes img { max-width:100%; max-height:200px; border-radius:6px; margin-top:6px; display:block; cursor:zoom-in; }
+  /* Image lightbox */
+  .lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:500; align-items:center; justify-content:center; cursor:zoom-out; }
+  .lightbox.open { display:flex; }
+  .lightbox img { max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 8px 48px rgba(0,0,0,0.5); }
+
+
+
+  /* ACTIVITY NOTES PANEL */
+  .notes-toggle { display:inline-flex; align-items:center; gap:5px; font-size:0.76rem; color:var(--accent); cursor:pointer; background:var(--accent-light); border:none; border-radius:20px; padding:3px 10px; margin-top:6px; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+  .notes-toggle:hover { background:#e8cfc0; }
+  .notes-panel { display:none; margin-top:10px; border-top:1px solid var(--border); padding-top:12px; animation:slideIn 0.2s ease; }
+  .notes-panel.open { display:block; }
+  .note-item { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; margin-bottom:8px; }
+  .note-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+  .note-author { font-size:0.75rem; font-weight:500; color:var(--accent); }
+  .note-date { font-size:0.72rem; color:var(--ink-soft); }
+  .note-text { font-size:0.85rem; line-height:1.5; color:var(--ink); white-space:pre-wrap; word-break:break-word; }
+  .note-text img { max-width:100%; max-height:180px; border-radius:6px; margin-top:6px; display:block; cursor:zoom-in; }
+  .note-input-area { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .note-input-area .notes-editor { min-height:60px; font-size:0.88rem; }
+  .note-blocked { background:#FDF3E8; border:1px solid #f0d9b5; border-radius:8px; padding:10px 14px; font-size:0.82rem; color:var(--warning); margin-top:8px; }
+  .btn-note { background:var(--ink); color:white; font-size:0.82rem; padding:7px 16px; border-radius:8px; align-self:flex-end; flex:none; }
+  .btn-note:hover { background:#3a2e1f; }
+
+
+  /* ── KANBAN ── */
+  .view-toggle { display:flex; gap:4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:3px; margin-left:auto; }
+  .view-btn { padding:5px 12px; font-size:0.8rem; border:none; border-radius:6px; cursor:pointer; background:transparent; color:var(--ink-soft); font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+  .view-btn.active { background:var(--ink); color:white; }
+
+  .kanban-board { display:grid; grid-template-columns:1fr 1fr 0.8fr; gap:20px; align-items:start; }
+  .kanban-col { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:0; box-shadow:var(--shadow); min-height:200px; display:flex; flex-direction:column; }
+  .kanban-col-header { padding:14px 16px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; border-radius:var(--radius) var(--radius) 0 0; }
+  .kanban-col-header.status-Pendente       { background:#FDF3E8; border-left:4px solid var(--warning); }
+  .kanban-col-header.status-Em\ andamento  { background:#EDF3FC; border-left:4px solid #2D6DC4; }
+  .kanban-col-header.status-Concluído      { background:#E8F3EB; border-left:4px solid var(--success); }
+  .kanban-col-header.status-Cancelado      { background:#FDEAEA; border-left:4px solid var(--danger); }
+  .kanban-col-title { font-weight:500; font-size:0.88rem; }
+  .kanban-count { font-size:0.75rem; font-weight:600; background:rgba(26,18,8,0.08); padding:2px 8px; border-radius:20px; }
+  .kanban-cards { padding:10px; display:flex; flex-direction:column; gap:8px; min-height:80px; max-height:calc(3 * 110px + 2 * 8px + 20px); overflow-y:auto; transition:background 0.15s; }
+  .kanban-cards.drag-over { background:rgba(196,98,45,0.06); border-radius:8px; }
+
+  .kanban-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; cursor:grab; transition:box-shadow 0.15s, transform 0.15s; user-select:none; }
+  .kanban-card:active { cursor:grabbing; }
+  .kanban-card.dragging { opacity:0.4; transform:scale(0.97); }
+  .kanban-card:hover { box-shadow:0 4px 16px rgba(26,18,8,0.12); transform:translateY(-2px); }
+  .kanban-card-title { font-weight:500; font-size:0.88rem; margin-bottom:6px; line-height:1.3; }
+  .kanban-card-meta { display:flex; flex-wrap:wrap; gap:6px; font-size:0.72rem; color:var(--ink-soft); }
+  .kanban-card-type { display:inline-flex; align-items:center; gap:4px; }
+  .kanban-card-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .kanban-card-actions { display:flex; gap:4px; margin-top:8px; justify-content:flex-end; }
+  .kanban-card-actions .icon-btn { width:26px; height:26px; font-size:0.8rem; }
+  .kanban-col.col-concluido .kanban-cards { opacity:0.75; }
+  .kanban-col.col-concluido .kanban-col-header { opacity:0.85; }
+  .kanban-note-badge { font-size:0.7rem; color:var(--accent); background:var(--accent-light); padding:2px 7px; border-radius:20px; cursor:pointer; }
+
+  @media(max-width:480px) {
+    .kanban-board { grid-template-columns:1fr; }
+  }
+
+
+  /* SCHEDULING */
+  .schedule-toggle-row { display:flex; align-items:center; gap:10px; padding:12px 14px; background:var(--bg); border:1.5px solid var(--border); border-radius:8px; cursor:pointer; transition:border-color 0.2s; }
+  .schedule-toggle-row:hover { border-color:var(--accent); }
+  .schedule-toggle-row input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+  .schedule-toggle-label { font-size:0.9rem; font-weight:500; flex:1; }
+  .schedule-fields { margin-top:10px; display:none; gap:12px; }
+  .schedule-fields.open { display:grid; grid-template-columns:1fr 1fr; }
+  .gcal-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 18px; background:white; border:1.5px solid var(--border); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:0.88rem; font-weight:500; cursor:pointer; color:var(--ink); transition:all 0.15s; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+  .gcal-btn:hover { border-color:#4285F4; box-shadow:0 2px 8px rgba(66,133,244,0.2); transform:translateY(-1px); }
+  .gcal-btn img { width:18px; height:18px; }
+  .gcal-btn.connected { border-color:#4A7C59; background:#E8F3EB; color:#4A7C59; }
+  .scheduled-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; background:#EDF3FC; color:#2D6DC4; padding:2px 8px; border-radius:20px; font-weight:500; }
+  .gcal-status { font-size:0.78rem; color:var(--ink-soft); margin-top:6px; }
+
+
+  /* GUESTS */
+  .guest-input-row { display:flex; gap:8px; }
+  .guest-input-row input { flex:1; }
+  .guest-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .guest-tag { display:inline-flex; align-items:center; gap:6px; background:var(--accent-light); color:var(--accent); border:1px solid #e8cfc0; border-radius:20px; padding:3px 10px; font-size:0.78rem; font-weight:500; }
+  .guest-tag button { background:none; border:none; cursor:pointer; color:var(--accent); font-size:0.85rem; padding:0; line-height:1; }
+  .guest-tag button:hover { color:var(--danger); }
+
+
+  /* PASSWORD CHANGE */
+  .user-item-actions { display:flex; gap:6px; align-items:center; }
+  .pwd-form { display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); gap:8px; flex-direction:column; }
+  .pwd-form.open { display:flex; }
+  .pwd-form input { font-family:'DM Sans',sans-serif; font-size:0.85rem; padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; background:var(--bg); color:var(--ink); outline:none; }
+  .pwd-form input:focus { border-color:var(--accent); }
+  .pwd-actions { display:flex; gap:8px; }
+
+
+  /* VIEW MODAL */
+  .view-modal { background:var(--card); border-radius:16px; padding:0; width:90%; max-width:600px; box-shadow:0 24px 64px rgba(26,18,8,0.3); animation:modalIn 0.2s ease; overflow:hidden; max-height:90vh; display:flex; flex-direction:column; }
+  .view-modal-header { padding:24px 28px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-shrink:0; }
+  .view-modal-title { font-family:'Playfair Display',serif; font-size:1.3rem; line-height:1.3; flex:1; }
+  .view-modal-body { padding:24px 28px; overflow-y:auto; flex:1; }
+  .view-modal-footer { padding:16px 28px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; flex-shrink:0; }
+  .view-field { margin-bottom:16px; }
+  .view-field-label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:4px; }
+  .view-field-value { font-size:0.95rem; line-height:1.5; }
+  .view-field-value img { max-width:100%; max-height:200px; border-radius:6px; margin-top:6px; display:block; cursor:zoom-in; }
+  .view-notes-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .view-note-item { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; }
+  .view-note-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+  .view-note-author { font-size:0.75rem; font-weight:500; color:var(--accent); }
+  .view-note-date { font-size:0.72rem; color:var(--ink-soft); }
+  .view-note-text { font-size:0.85rem; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+  .view-note-text img { max-width:100%; max-height:160px; border-radius:6px; margin-top:4px; display:block; cursor:zoom-in; }
+  .close-btn { background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--ink-soft); padding:0; line-height:1; flex-shrink:0; }
+  .close-btn:hover { color:var(--ink); }
+
+
+  /* PAGINATION */
+  .list-footer { display:flex; align-items:center; justify-content:space-between; margin-top:12px; flex-wrap:wrap; gap:8px; }
+  .pagesize-row { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--ink-soft); }
+  .pagesize-btn { padding:4px 12px; font-size:0.78rem; background:var(--card); border:1.5px solid var(--border); color:var(--ink-soft); border-radius:20px; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.15s; }
+  .pagesize-btn.active { background:var(--ink); color:white; border-color:var(--ink); }
+  .activity-list { max-height:600px; overflow-y:auto; }
+
+  /* TYPES MANAGEMENT */
+  .types-list { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+  .type-item { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:10px; }
+  .type-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .type-name { flex:1; font-size:0.9rem; font-weight:500; }
+  .type-actions { display:flex; gap:6px; }
+  .color-input { width:32px; height:32px; border:none; border-radius:6px; cursor:pointer; padding:2px; background:none; }
+  .admin-section-title { font-family:'Playfair Display',serif; font-size:1rem; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .admin-section-title::before { content:''; display:block; width:3px; height:16px; background:var(--accent); border-radius:2px; }
+  .admin-tabs { display:flex; gap:6px; margin-bottom:20px; }
+  .admin-tab { padding:7px 18px; font-size:0.82rem; background:var(--bg); border:1.5px solid var(--border); color:var(--ink-soft); border-radius:20px; cursor:pointer; }
+  .admin-tab.active { background:var(--ink); color:white; border-color:var(--ink); }
+  .admin-panel { display:none; }
+  .admin-panel.active { display:block; }
+
+  @media(max-width:640px) {
+    .stats-row{grid-template-columns:repeat(2,1fr)}
+    .form-grid{grid-template-columns:1fr}
+    .activity-item{grid-template-columns:auto 1fr auto}
+    .badge{display:none}
+    .charts-grid{grid-template-columns:1fr}
+    .chart-card.wide{grid-column:1}
+    .admin-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Gute <span>CRM</span></div>
+    <div class="login-sub">Entre com sua conta para continuar</div>
+    <div class="login-group"><label>E-mail</label><input type="email" id="lEmail" placeholder="seu@email.com"></div>
+    <div class="login-group"><label>Senha</label><input type="password" id="lPassword" placeholder="••••••••"></div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="appScreen">
+  <header>
+    <div class="logo">Gute <span>CRM</span></div>
+    <div class="header-right">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="tab-nav">
+          <button class="tab-btn active" onclick="switchTab('atividades',this)">📋 Atividades</button>
+          <button class="tab-btn" onclick="switchTab('graficos',this)">📊 Gráficos</button>
+          <button class="tab-btn" id="adminTabBtn" onclick="switchTab('admin',this)" style="display:none">⚙️ Usuários</button>
+        </div>
+        <div class="user-badge">
+          <span id="userEmailBadge"></span>
+          <button onclick="doLogout()">Sair</button>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span id="syncStatus" style="font-size:0.72rem;color:#C4962D">🔄 Conectando...</span>
+        <div class="header-date" id="headerDate"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ABA ATIVIDADES -->
+    <div class="tab-panel active" id="tab-atividades">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value accent" id="statTotal">—</div></div>
+        <div class="stat-card"><div class="stat-label">Concluídas</div><div class="stat-value success" id="statDone">—</div></div>
+        <div class="stat-card"><div class="stat-label">Pendentes</div><div class="stat-value warning" id="statPending">—</div></div>
+        <div class="stat-card"><div class="stat-label">Hoje</div><div class="stat-value" id="statToday">—</div></div>
+      </div>
+
+      <!-- ATIVIDADES REGISTRADAS -->
+      <div class="section-title" style="justify-content:space-between;align-items:center;">
+        <span style="display:flex;align-items:center;gap:10px;"><span style="display:block;width:4px;height:20px;background:var(--ink);border-radius:2px;"></span>Atividades Registradas</span>
+        <div class="view-toggle" style="margin-left:0">
+          <button class="view-btn active" id="viewBtnList" onclick="switchView('list')">☰ Lista</button>
+          <button class="view-btn" id="viewBtnKanban" onclick="switchView('kanban')">⬛ Kanban</button>
+        </div>
+      </div>
+      <div class="filters-row" id="filtersRow">
+        <input type="text" class="search-input" id="searchInput" placeholder="🔍  Buscar..." oninput="renderCurrent()">
+      </div>
+      <div id="listView">
+        <div class="activity-list" id="activityList">
+          <div class="empty-state"><div class="empty-icon">☁️</div><p>Conectando ao banco de dados...</p></div>
+        </div>
+      </div>
+      <div id="kanbanView" style="display:none">
+        <div class="kanban-board" id="kanbanBoard"></div>
+      </div>
+
+    </div>
+
+    <!-- ABA GRÁFICOS -->
+    <div class="tab-panel" id="tab-graficos">
+      <div class="period-row">
+        <button class="period-btn active" onclick="setPeriod(7,this)">7 dias</button>
+        <button class="period-btn" onclick="setPeriod(30,this)">30 dias</button>
+        <button class="period-btn" onclick="setPeriod(90,this)">3 meses</button>
+        <button class="period-btn" onclick="setPeriod(0,this)">Tudo</button>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-heading">Por Tipo</div><div id="wType" class="chart-box"><canvas id="cType"></canvas></div></div>
+        <div class="chart-card"><div class="chart-heading">Por Status</div><div id="wStatus" class="chart-box"><canvas id="cStatus"></canvas></div></div>
+        <div class="chart-card wide"><div class="chart-heading">Atividades ao Longo do Tempo</div><div id="wTimeline" class="chart-box tall"><canvas id="cTimeline"></canvas></div></div>
+        <div class="chart-card"><div class="chart-heading">Taxa de Conclusão por Tipo</div><div id="wCompletion" class="chart-box"><canvas id="cCompletion"></canvas></div></div>
+        <div class="chart-card"><div class="chart-heading">Por Dia da Semana</div><div id="wWeek" class="chart-box"><canvas id="cWeek"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ABA ADMIN -->
+    <div class="tab-panel" id="tab-admin">
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('usuarios',this)">👥 Usuários</button>
+        <button class="admin-tab" onclick="switchAdminTab('tipos',this)">🏷️ Tipos de Atividade</button>
+      </div>
+
+      <!-- SUB: USUÁRIOS -->
+      <div class="admin-panel active" id="adminPanel-usuarios">
+        <div class="admin-grid">
+          <div class="form-card" style="margin-bottom:0">
+            <div class="form-title">Cadastrar Novo Usuário</div>
+            <div class="form-group" style="margin-bottom:14px"><label>Nome</label><input type="text" id="aName" placeholder="Nome completo"></div>
+            <div class="form-group" style="margin-bottom:14px"><label>E-mail</label><input type="email" id="aEmail" placeholder="usuario@email.com"></div>
+            <div class="form-group" style="margin-bottom:14px"><label>Senha temporária</label><input type="text" id="aPassword" placeholder="Mínimo 6 caracteres"></div>
+            <div class="form-group" style="margin-bottom:14px"><label>Perfil</label>
+              <select id="aRole"><option value="user">Usuário</option><option value="admin">Administrador</option></select>
+            </div>
+            <button class="btn-primary" style="width:100%;flex:none" onclick="createUser()">Cadastrar Usuário</button>
+            <div class="admin-error" id="adminError"></div>
+            <div class="admin-success" id="adminSuccess"></div>
+          </div>
+          <div class="form-card" style="margin-bottom:0">
+            <div class="form-title">Usuários Cadastrados</div>
+            <div class="users-list" id="usersList">
+              <div class="empty-state" style="padding:30px 0"><p>Carregando usuários...</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB: TIPOS -->
+      <div class="admin-panel" id="adminPanel-tipos">
+        <div class="admin-grid">
+          <div class="form-card" style="margin-bottom:0">
+            <div class="form-title">Novo Tipo de Atividade</div>
+            <div class="form-group" style="margin-bottom:14px">
+              <label>Nome do Tipo</label>
+              <input type="text" id="tName" placeholder="Ex: Proposta, Follow-up...">
+            </div>
+            <div class="form-group" style="margin-bottom:14px">
+              <label>Cor</label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="color" id="tColor" value="#4A7C59" class="color-input">
+                <span style="font-size:0.85rem;color:var(--ink-soft)">Escolha uma cor para o tipo</span>
+              </div>
+            </div>
+            <button class="btn-primary" style="width:100%;flex:none" onclick="saveType()">Adicionar Tipo</button>
+            <div class="admin-error" id="typeError"></div>
+            <div class="admin-success" id="typeSuccess"></div>
+          </div>
+          <div class="form-card" style="margin-bottom:0">
+            <div class="form-title">Tipos Cadastrados</div>
+            <div class="types-list" id="typesList">
+              <div class="empty-state" style="padding:30px 0"><p>Carregando tipos...</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL EDIÇÃO -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">Editar Atividade</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Título</label><input type="text" id="eFTitle"></div>
+      <div class="form-group"><label>Tipo</label>
+        <select id="eFType"><option>Reunião</option><option>Ligação</option><option>Tarefa</option><option>Email</option><option>Visita</option><option>Outros</option></select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="eFStatus"><option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Cancelado</option></select>
+      </div>
+      <div class="form-group"><label>Contato / Empresa</label><input type="text" id="eFContact"></div>
+      <div class="form-group"><label>Data</label><input type="date" id="eFDate"></div>
+      <div class="form-group full"><label>Observações</label><div id="eFNotes" class="notes-editor" contenteditable="true" data-placeholder="Detalhes, próximos passos... Cole imagens com Ctrl+V"></div><div class="notes-hint">💡 Cole imagens diretamente com Ctrl+V</div></div>
+      <div class="form-group full">
+        <label>Agendamento</label>
+        <div class="schedule-toggle-row" onclick="document.getElementById('eFScheduleCheck').click()">
+          <input type="checkbox" id="eFScheduleCheck" onclick="event.stopPropagation();toggleSchedule('eF')">
+          <span class="schedule-toggle-label">Agendar no Google Agenda com lembrete</span>
+          <span style="font-size:0.8rem;color:var(--ink-soft)">📅</span>
+        </div>
+        <div class="schedule-fields" id="eFScheduleFields">
+          <div class="form-group">
+            <label>Horário início</label>
+            <input type="time" id="eFTimeStart" value="09:00">
+          </div>
+          <div class="form-group">
+            <label>Horário fim</label>
+            <input type="time" id="eFTimeEnd" value="10:00">
+          </div>
+          <div class="form-group">
+            <label>Lembrete (minutos antes)</label>
+            <select id="eFReminder">
+              <option value="10">10 minutos</option>
+              <option value="30" selected>30 minutos</option>
+              <option value="60">1 hora</option>
+              <option value="1440">1 dia</option>
+            </select>
+          </div>
+          <div class="form-group" style="align-self:flex-end">
+            <div id="gcalConnectAreaModal">
+              <button type="button" class="gcal-btn" id="gcalConnectBtnModal" onclick="connectGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                Conectar Google
+              </button>
+              <div class="gcal-status" id="gcalStatusModal"></div>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label>Convidados (receberão convite no Google Agenda)</label>
+            <div class="guest-input-row">
+              <input type="email" id="eFGuestInput" placeholder="email@exemplo.com">
+              <button type="button" class="btn-secondary" onclick="addGuest('eF')" style="white-space:nowrap">+ Adicionar</button>
+            </div>
+            <div class="guest-tags" id="eFGuestTags"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc,
+           onSnapshot, query, orderBy, setDoc, getDoc, getDocs, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+           createUserWithEmailAndPassword, sendPasswordResetEmail }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDybDCOdGO4MGoO9LIcCx1i_qZXlTwl5J4",
+    authDomain: "gute-crm-1a63c.firebaseapp.com",
+    projectId: "gute-crm-1a63c",
+    storageBucket: "gute-crm-1a63c.firebasestorage.app",
+    messagingSenderId: "56961630422",
+    appId: "1:56961630422:web:809376421b0b48ca638977"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const db   = getFirestore(app);
+  const auth = getAuth(app);
+
+  // ── state ──────────────────────────────────────────────
+  let activities    = [];
+  let activityTypes = []; // loaded from Firestore
+  let notesCache    = {}; // activityId -> [notes]
+  let currentView   = 'list'; // 'list' or 'kanban'
+  let openNotePanels = new Set(); // track which panels are open across re-renders
+  let currentFilter   = 'Todos';
+  let showConcluido  = false;
+  let pageSize        = 10;
+  let editingId     = null;
+  let chartPeriod   = 7;
+  let currentUser   = null;
+  let currentRole   = 'user';
+  const charts      = {};
+  const today       = new Date().toISOString().split('T')[0];
+
+  document.getElementById('fDate').value = today;
+  document.getElementById('headerDate').textContent =
+    new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  // ── AUTH STATE ────────────────────────────────────────
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      currentUser = user;
+      let snapData = null;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        snapData = snap.exists() ? snap.data() : null;
+      } catch(e) { console.error(e); }
+      const rawRole = snapData ? (snapData.role || '') : '';
+      currentRole = rawRole.replace(/['"]/g, '').trim().toLowerCase();
+      console.log('UID:', user.uid, '| role raw:', rawRole, '| normalized:', currentRole);
+      document.getElementById('loginScreen').style.display  = 'none';
+      document.getElementById('appScreen').style.display    = 'block';
+      document.getElementById('userEmailBadge').textContent = snapData ? (snapData.name || user.email) : user.email;
+      const dbgEl = document.getElementById('syncStatus');
+      dbgEl.textContent = '🔍 role: "' + currentRole + '"';
+      setTimeout(() => setSync('online'), 4000);
+      if (currentRole === 'admin') {
+        document.getElementById('adminTabBtn').style.display = '';
+        loadUsers();
+      }
+      startListener();
+    } else {
+      currentUser = null;
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('appScreen').style.display   = 'none';
+    }
+  });
+
+  // ── LOGIN / LOGOUT ────────────────────────────────────
+  window.doLogin = async () => {
+    const email = document.getElementById('lEmail').value.trim();
+    const pass  = document.getElementById('lPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch(e) {
+      errEl.textContent = 'E-mail ou senha incorretos. Tente novamente.';
+      errEl.style.display = 'block';
+    }
+  };
+
+  window.doLogout = () => signOut(auth);
+
+  // Enter key on login
+  document.getElementById('lPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  // ── REALTIME LISTENER ─────────────────────────────────
+  let unsubscribe = null, unsubscribeTypes = null;
+  function startListener() {
+    if (unsubscribe) unsubscribe();
+    const q = query(collection(db, 'activities'), orderBy('createdAt', 'desc'));
+    unsubscribe = onSnapshot(q, snap => {
+      activities = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateStats(); renderCurrent();
+      setSync('online');
+    }, () => setSync('error'));
+
+    if (unsubscribeTypes) unsubscribeTypes();
+    unsubscribeTypes = onSnapshot(collection(db, 'activityTypes'), snap => {
+      if (snap.empty) {
+        // Seed default types on first load
+        seedDefaultTypes();
+      } else {
+        activityTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a,b) => (a.order||0) - (b.order||0));
+        refreshTypeSelects();
+        if (document.getElementById('adminPanel-tipos').classList.contains('active')) loadTypes();
+      }
+    });
+  }
+
+  const DEFAULT_TYPES = [
+    { name:'Reunião', color:'#4A7C59', order:0 },
+    { name:'Ligação', color:'#2D6DC4', order:1 },
+    { name:'Tarefa',  color:'#C4622D', order:2 },
+    { name:'Email',   color:'#7C4A7C', order:3 },
+    { name:'Visita',  color:'#C4962D', order:4 },
+    { name:'Outros',  color:'#7A6E5F', order:5 },
+  ];
+
+  async function seedDefaultTypes() {
+    for (const t of DEFAULT_TYPES) {
+      await addDoc(collection(db, 'activityTypes'), t);
+    }
+  }
+
+  function refreshTypeSelects() {
+    const opts = activityTypes.map(t => `<option value="${h(t.name)}">${h(t.name)}</option>`).join('');
+    ['fType','eFType'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = opts;
+      if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    });
+    updateDotColors();
+    renderFilterButtons();
+  }
+
+  function renderFilterButtons() {
+    const row = document.getElementById('filtersRow');
+    if (!row) return;
+    const search = row.querySelector('#searchInput');
+    // Remove all filter buttons
+    row.querySelectorAll('.filter-btn').forEach(b => b.remove());
+    // Add "Todos" button before search
+    const all = document.createElement('button');
+    all.className = 'filter-btn' + (currentFilter === 'Todos' ? ' active' : '');
+    all.textContent = 'Todos';
+    all.onclick = () => setFilter('Todos', all);
+    row.insertBefore(all, search);
+    // Add one button per active type
+    activityTypes.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn' + (currentFilter === t.name ? ' active' : '');
+      btn.textContent = t.name;
+      btn.onclick = () => setFilter(t.name, btn);
+      row.insertBefore(btn, search);
+    });
+    // Always add Concluídas toggle at the end (after search)
+    let bc = document.getElementById('btnConcluido');
+    if (!bc) {
+      bc = document.createElement('button');
+      bc.id = 'btnConcluido';
+      bc.title = 'Exibir/ocultar concluídas';
+      bc.onclick = toggleConcluido;
+      row.appendChild(bc);
+    }
+    bc.className = 'filter-btn' + (showConcluido ? ' active' : '');
+    bc.textContent = showConcluido ? '📋 Ver todas' : '✅ Concluídas';
+    // Nova Atividade button
+    let btnNova = document.getElementById('btnNovaAtividade');
+    if (!btnNova) {
+      btnNova = document.createElement('button');
+      btnNova.id = 'btnNovaAtividade';
+      btnNova.onclick = openNovaModal;
+      row.appendChild(btnNova);
+    }
+    btnNova.className = 'btn-primary';
+    btnNova.style.cssText = 'padding:7px 16px;font-size:0.82rem;border-radius:20px;';
+    btnNova.textContent = '+ Nova Atividade';
+  }
+
+  function updateDotColors() {
+    let style = document.getElementById('dynamicDotStyles');
+    if (!style) { style = document.createElement('style'); style.id='dynamicDotStyles'; document.head.appendChild(style); }
+    style.textContent = activityTypes.map(t =>
+      `.dot-${CSS.escape(t.name)} { background: ${t.color}; }`
+    ).join('\n');
+  }
+
+  function getTypeColor(typeName) {
+    const found = activityTypes.find(t => t.name === typeName);
+    return found ? found.color : '#CCBFB0'; // neutral if type no longer exists
+  }
+
+  function isKnownType(typeName) {
+    return activityTypes.some(t => t.name === typeName);
+  }
+
+  function setSync(s) {
+    const el = document.getElementById('syncStatus');
+    if (s==='online') { el.textContent='🟢 Sincronizado'; el.style.color='#4A7C59'; }
+    else if (s==='saving') { el.textContent='🔄 Salvando...'; el.style.color='#C4962D'; }
+    else { el.textContent='🔴 Erro de conexão'; el.style.color='#C4322D'; }
+  }
+
+  // ── ACTIVITIES CRUD ───────────────────────────────────
+  window.saveActivity = async () => {
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { document.getElementById('fTitle').focus(); return; }
+    const doSchedule = document.getElementById('fScheduleCheck').checked;
+    const date       = document.getElementById('fDate').value;
+    const timeStart  = document.getElementById('fTimeStart').value;
+    const timeEnd    = document.getElementById('fTimeEnd').value;
+    const reminder   = document.getElementById('fReminder').value;
+
+    if (doSchedule) {
+      if (!date) { alert('Preencha a data para agendar.'); return; }
+      if (!isFutureDateTime(date, timeStart)) { alert('O agendamento precisa ser uma data e horário futuros.'); return; }
+      if (!googleToken) { alert('Conecte sua conta Google antes de salvar para agendar.'); return; }
+    }
+
+    setSync('saving');
+    const notesHtml = await compressNotesImages(document.getElementById('fNotes').innerHTML);
+
+    const activityData = {
+      title,
+      type:      document.getElementById('fType').value,
+      status:    document.getElementById('fStatus').value,
+      contact:   document.getElementById('fContact').value.trim(),
+      date,
+      notes:     notesHtml,
+      scheduled: doSchedule,
+      createdBy: currentUser.email,
+      createdAt: new Date().toISOString()
+    };
+
+    if (doSchedule) {
+      activityData.timeStart  = timeStart;
+      activityData.timeEnd    = timeEnd;
+      activityData.reminderMin = reminder;
+    }
+
+    const ref = await addDoc(collection(db, 'activities'), activityData);
+
+    // Create Google Calendar event
+    if (doSchedule) {
+      const guests = [...guestLists['f']];
+      const gcalId = await createCalendarEvent(activityData, timeStart, timeEnd, reminder, guests);
+      if (gcalId) {
+        await updateDoc(doc(db, 'activities', ref.id), { gcalEventId: gcalId, guests });
+        showGcalStatus('✅ Evento criado! Convites enviados para ' + (guests.length ? guests.join(', ') : 'nenhum convidado') + '.', true);
+      }
+    }
+
+    guestLists['f'] = [];
+    renderGuestTags('f');
+    clearForm();
+    closeNovaModal();
+  };
+
+  window.deleteActivity = async id => {
+    if (!confirm('Excluir esta atividade?')) return;
+    setSync('saving');
+    await deleteDoc(doc(db, 'activities', id));
+  };
+
+  window.saveEdit = async () => {
+    const doSchedule = document.getElementById('eFScheduleCheck').checked;
+    const date       = document.getElementById('eFDate').value;
+    const timeStart  = document.getElementById('eFTimeStart').value;
+    const timeEnd    = document.getElementById('eFTimeEnd').value;
+    const reminder   = document.getElementById('eFReminder').value;
+
+    if (doSchedule) {
+      if (!date) { alert('Preencha a data para agendar.'); return; }
+      if (!isFutureDateTime(date, timeStart)) { alert('O agendamento precisa ser uma data e horário futuros.'); return; }
+      if (!googleToken) { alert('Conecte sua conta Google antes de salvar para agendar.'); return; }
+    }
+
+    setSync('saving');
+    const notesHtml = await compressNotesImages(document.getElementById('eFNotes').innerHTML);
+
+    const updateData = {
+      title:   document.getElementById('eFTitle').value.trim(),
+      type:    document.getElementById('eFType').value,
+      status:  document.getElementById('eFStatus').value,
+      contact: document.getElementById('eFContact').value.trim(),
+      date,
+      notes:   notesHtml,
+      scheduled: doSchedule
+    };
+
+    if (doSchedule) {
+      updateData.timeStart   = timeStart;
+      updateData.timeEnd     = timeEnd;
+      updateData.reminderMin = reminder;
+    }
+
+    await updateDoc(doc(db, 'activities', editingId), updateData);
+
+    if (doSchedule) {
+      const guests = [...guestLists['eF']];
+      const activity = { ...updateData, title: updateData.title };
+      const gcalId = await createCalendarEvent(activity, timeStart, timeEnd, reminder, guests);
+      if (gcalId) {
+        await updateDoc(doc(db, 'activities', editingId), { gcalEventId: gcalId, guests });
+        showGcalStatus('✅ Evento criado! Convites enviados para ' + (guests.length ? guests.join(', ') : 'nenhum convidado') + '.', true);
+      }
+    }
+
+    guestLists['eF'] = [];
+    renderGuestTags('eF');
+    closeModal();
+  };
+
+  window.clearForm = () => {
+    ['fTitle','fContact'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('fNotes').innerHTML = '';
+    document.getElementById('fDate').value   = today;
+    document.getElementById('fType').value   = 'Reunião';
+    document.getElementById('fStatus').value = 'Pendente';
+    document.getElementById('fScheduleCheck').checked = false;
+    document.getElementById('fScheduleFields').classList.remove('open');
+    guestLists['f'] = [];
+    renderGuestTags('f');
+  };
+
+  window.openEdit = id => {
+    editingId = id;
+    const a = activities.find(a => a.id===id);
+    document.getElementById('eFTitle').value     = a.title;
+    document.getElementById('eFType').value      = a.type;
+    document.getElementById('eFStatus').value    = a.status;
+    document.getElementById('eFContact').value   = a.contact||'';
+    document.getElementById('eFDate').value      = a.date||'';
+    document.getElementById('eFNotes').innerHTML = a.notes||'';
+    // Scheduling
+    const hasSched = !!a.scheduled;
+    document.getElementById('eFScheduleCheck').checked = hasSched;
+    document.getElementById('eFScheduleFields').classList.toggle('open', hasSched);
+    if (hasSched) {
+      document.getElementById('eFTimeStart').value  = a.timeStart  || '09:00';
+      document.getElementById('eFTimeEnd').value    = a.timeEnd    || '10:00';
+      document.getElementById('eFReminder').value   = a.reminderMin|| '30';
+    }
+    updateGcalUI(!!googleToken);
+    // Restore guests
+    guestLists['eF'] = a.guests ? [...a.guests] : [];
+    renderGuestTags('eF');
+    document.getElementById('editModal').classList.add('open');
+  };
+
+  window.closeModal = () => document.getElementById('editModal').classList.remove('open');
+  document.getElementById('editModal').addEventListener('click', e => { if(e.target===document.getElementById('editModal')) closeModal(); });
+
+  // ── ADMIN: CREATE USER ────────────────────────────────
+  window.createUser = async () => {
+    const name  = document.getElementById('aName').value.trim();
+    const email = document.getElementById('aEmail').value.trim();
+    const pass  = document.getElementById('aPassword').value.trim();
+    const role  = document.getElementById('aRole').value;
+    const errEl = document.getElementById('adminError');
+    const okEl  = document.getElementById('adminSuccess');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+
+    if (!email || !pass || pass.length < 6) {
+      errEl.textContent = 'Preencha e-mail e uma senha de pelo menos 6 caracteres.';
+      errEl.style.display = 'block'; return;
+    }
+
+    try {
+      // Create a secondary app instance to avoid signing out current admin
+      const { initializeApp: initApp2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+      const { getAuth: getAuth2, createUserWithEmailAndPassword: createUser2 }
+        = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+
+      const app2  = initApp2(firebaseConfig, 'secondary-' + Date.now());
+      const auth2 = getAuth2(app2);
+      const cred  = await createUser2(auth2, email, pass);
+
+      // Save user profile in Firestore
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name: name || email, email, role, createdAt: new Date().toISOString()
+      });
+
+      await auth2.signOut();
+
+      document.getElementById('aName').value = '';
+      document.getElementById('aEmail').value = '';
+      document.getElementById('aPassword').value = '';
+      document.getElementById('aRole').value = 'user';
+      okEl.textContent = `✅ Usuário "${name || email}" cadastrado com sucesso!`;
+      okEl.style.display = 'block';
+      loadUsers();
+    } catch(e) {
+      const msgs = { 'auth/email-already-in-use':'Este e-mail já está cadastrado.', 'auth/invalid-email':'E-mail inválido.' };
+      errEl.textContent = msgs[e.code] || 'Erro ao cadastrar: ' + e.message;
+      errEl.style.display = 'block';
+    }
+  };
+
+  // ── ADMIN TABS ───────────────────────────────────────
+  window.switchAdminTab = (name, btn) => {
+    document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('adminPanel-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'tipos') loadTypes();
+    if (name === 'usuarios') loadUsers();
+  };
+
+  // ── TYPES CRUD ────────────────────────────────────────
+  window.saveType = async () => {
+    const name  = document.getElementById('tName').value.trim();
+    const color = document.getElementById('tColor').value;
+    const errEl = document.getElementById('typeError');
+    const okEl  = document.getElementById('typeSuccess');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+    if (!name) { errEl.textContent = 'Digite um nome para o tipo.'; errEl.style.display='block'; return; }
+    if (activityTypes.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+      errEl.textContent = 'Já existe um tipo com esse nome.'; errEl.style.display='block'; return;
+    }
+    await addDoc(collection(db, 'activityTypes'), { name, color, order: activityTypes.length });
+    document.getElementById('tName').value = '';
+    okEl.textContent = `✅ Tipo "${name}" adicionado!`; okEl.style.display='block';
+    setTimeout(() => okEl.style.display='none', 3000);
+  };
+
+  window.deleteType = async (id, name) => {
+    if (!confirm(`Excluir o tipo "${name}"? As atividades com esse tipo não serão afetadas.`)) return;
+    await deleteDoc(doc(db, 'activityTypes', id));
+  };
+
+  window.startEditType = (id, name, color) => {
+    const item = document.getElementById('typeItem-' + id);
+    item.innerHTML = `
+      <div class="type-dot" style="background:${color}"></div>
+      <input type="text" value="${h(name)}" id="editTypeName-${id}" style="flex:1;font-size:0.9rem;padding:4px 8px;border:1.5px solid var(--accent);border-radius:6px;background:var(--bg);outline:none;">
+      <input type="color" value="${color}" id="editTypeColor-${id}" class="color-input">
+      <div class="type-actions">
+        <button class="icon-btn" onclick="confirmEditType('${id}')" title="Salvar">💾</button>
+        <button class="icon-btn" onclick="loadTypes()" title="Cancelar">✖️</button>
+      </div>`;
+  };
+
+  window.confirmEditType = async (id) => {
+    const name  = document.getElementById('editTypeName-' + id).value.trim();
+    const color = document.getElementById('editTypeColor-' + id).value;
+    if (!name) return;
+    await updateDoc(doc(db, 'activityTypes', id), { name, color });
+  };
+
+  function loadTypes() {
+    const el = document.getElementById('typesList');
+    if (!activityTypes.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:30px 0"><p>Nenhum tipo cadastrado.</p></div>';
+      return;
+    }
+    el.innerHTML = activityTypes.map(t => `
+      <div class="type-item" id="typeItem-${t.id}">
+        <div class="type-dot" style="background:${t.color}"></div>
+        <span class="type-name">${h(t.name)}</span>
+        <div class="type-actions">
+          <button class="icon-btn" onclick="startEditType('${t.id}','${h(t.name)}','${t.color}')" title="Editar">✏️</button>
+          <button class="icon-btn delete" onclick="deleteType('${t.id}','${h(t.name)}')" title="Excluir">🗑️</button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function loadUsers() {
+    const snap = await getDocs(collection(db, 'users'));
+    const users = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    const el = document.getElementById('usersList');
+    if (!users.length) { el.innerHTML='<div class="empty-state" style="padding:30px 0"><p>Nenhum usuário cadastrado.</p></div>'; return; }
+    el.innerHTML = users.map(u => `
+      <div class="user-item" style="flex-direction:column;align-items:stretch;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div class="user-info">
+            <span class="user-name">${h(u.name||u.email)}</span>
+            <span class="user-email">${h(u.email)}</span>
+          </div>
+          <div class="user-item-actions">
+            <span class="user-role ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'Admin':'Usuário'}</span>
+            <button class="icon-btn" onclick="toggleEmailForm('${u.id}','${h(u.email)}')" title="Editar e-mail">✏️</button>
+            <button class="icon-btn" onclick="togglePwdForm('${u.id}')" title="Redefinir senha">🔑</button>
+          </div>
+        </div>
+        <div class="pwd-form" id="emailForm-${u.id}">
+          <div style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:6px;">Alterar e-mail do usuário:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div>
+              <label style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);">E-mail antigo (nas atividades)</label>
+              <input type="email" id="oldEmailInput-${u.id}" value="${h(u.email)}" placeholder="email.antigo@exemplo.com" style="margin-top:4px;width:100%">
+            </div>
+            <div>
+              <label style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);">Novo e-mail</label>
+              <input type="email" id="emailInput-${u.id}" value="${h(u.email)}" placeholder="novo@email.com" style="margin-top:4px;width:100%">
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--ink-soft);margin-top:4px;">💡 Atualiza o cadastro <strong>e</strong> corrige o e-mail nas atividades registradas.</div>
+          <div class="pwd-actions">
+            <button class="btn-secondary" onclick="toggleEmailForm('${u.id}','${h(u.email)}')">Cancelar</button>
+            <button class="btn-primary" style="flex:1" onclick="saveUserEmail('${u.id}')">💾 Salvar e corrigir atividades</button>
+          </div>
+          <div id="emailMsg-${u.id}" style="font-size:0.8rem;display:none"></div>
+        </div>
+        <div class="pwd-form" id="pwdForm-${u.id}">
+          <div style="font-size:0.82rem;color:var(--ink-soft);margin-bottom:4px;">Um e-mail de redefinição será enviado para <strong>${h(u.email)}</strong>.</div>
+          <div class="pwd-actions">
+            <button class="btn-secondary" onclick="togglePwdForm('${u.id}')">Cancelar</button>
+            <button class="btn-primary" style="flex:1" onclick="changeUserPassword('${u.id}','${h(u.email)}')">📧 Enviar e-mail de redefinição</button>
+          </div>
+          <div id="pwdMsg-${u.id}" style="font-size:0.8rem;display:none"></div>
+        </div>
+      </div>`).join('');
+  }
+
+  window.toggleEmailForm = (uid, currentEmail) => {
+    const form = document.getElementById('emailForm-' + uid);
+    form.classList.toggle('open');
+    if (form.classList.contains('open')) {
+      const newInput = document.getElementById('emailInput-' + uid);
+      const oldInput = document.getElementById('oldEmailInput-' + uid);
+      if (newInput) { newInput.value = currentEmail; }
+      if (oldInput) { oldInput.value = currentEmail; oldInput.focus(); }
+      // Close pwd form if open
+      const pwdForm = document.getElementById('pwdForm-' + uid);
+      if (pwdForm) pwdForm.classList.remove('open');
+    } else {
+      const msg = document.getElementById('emailMsg-' + uid);
+      if (msg) msg.style.display = 'none';
+    }
+  };
+
+  window.saveUserEmail = async (uid) => {
+    const newEmailInput = document.getElementById('emailInput-' + uid);
+    const oldEmailInput = document.getElementById('oldEmailInput-' + uid);
+    const msgEl         = document.getElementById('emailMsg-' + uid);
+    const newEmail      = newEmailInput.value.trim().toLowerCase();
+    const oldEmail      = oldEmailInput.value.trim().toLowerCase();
+    msgEl.style.display = 'none';
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      msgEl.textContent = '⚠️ Novo e-mail inválido.';
+      msgEl.style.color = 'var(--danger)';
+      msgEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.querySelector('#emailForm-' + uid + ' .btn-primary');
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+    try {
+      // 1. Update Firestore users collection
+      await updateDoc(doc(db, 'users', uid), { email: newEmail });
+
+      // 2. Find and update all activities where createdBy matches oldEmail
+      let migratedCount = 0;
+      if (oldEmail && oldEmail !== newEmail) {
+        const activitiesSnap = await getDocs(collection(db, 'activities'));
+        const batch = [];
+        activitiesSnap.forEach(d => {
+          if (d.data().createdBy === oldEmail) {
+            batch.push(updateDoc(doc(db, 'activities', d.id), { createdBy: newEmail }));
+            migratedCount++;
+          }
+        });
+        await Promise.all(batch);
+      }
+
+      const migrateMsg = migratedCount > 0
+        ? ' ' + migratedCount + ' atividade(s) corrigida(s).'
+        : ' Nenhuma atividade encontrada com o e-mail antigo.';
+
+      msgEl.textContent = '✅ E-mail atualizado no cadastro!' + migrateMsg;
+      msgEl.style.color = 'var(--success)';
+      msgEl.style.display = 'block';
+      setTimeout(() => { toggleEmailForm(uid, newEmail); loadUsers(); }, 3000);
+    } catch(e) {
+      msgEl.textContent = '❌ Erro ao salvar: ' + e.message;
+      msgEl.style.color = 'var(--danger)';
+      msgEl.style.display = 'block';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar e corrigir atividades'; }
+    }
+  };
+
+  window.togglePwdForm = (uid) => {
+    const form = document.getElementById('pwdForm-' + uid);
+    form.classList.toggle('open');
+    if (!form.classList.contains('open')) {
+      const msg = document.getElementById('pwdMsg-' + uid);
+      if (msg) msg.style.display = 'none';
+    }
+  };
+
+  window.changeUserPassword = async (uid, email) => {
+    const msgEl = document.getElementById('pwdMsg-' + uid);
+    const btn   = document.querySelector('#pwdForm-' + uid + ' .btn-primary');
+    msgEl.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      msgEl.textContent = '✅ E-mail de redefinição enviado para ' + email;
+      msgEl.style.color = 'var(--success)';
+      msgEl.style.display = 'block';
+      setTimeout(() => togglePwdForm(uid), 3000);
+    } catch(e) {
+      msgEl.textContent = '❌ Erro ao enviar e-mail: ' + e.message;
+      msgEl.style.color = 'var(--danger)';
+      msgEl.style.display = 'block';
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📧 Enviar e-mail de redefinição'; }
+    }
+  };
+
+  // ── UI ────────────────────────────────────────────────
+  window.setFilter = (f, btn) => {
+    currentFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const bc = document.getElementById('btnConcluido'); if (bc) bc.classList.toggle('active', showConcluido);
+    renderCurrent();
+  };
+
+
+  function renderListFooter(total, shown) {
+    let footer = document.getElementById('listFooter');
+    if (!footer) {
+      footer = document.createElement('div');
+      footer.id = 'listFooter';
+      footer.className = 'list-footer';
+      const listView = document.getElementById('listView');
+      if (listView) listView.appendChild(footer);
+    }
+    if (total === 0) { footer.innerHTML = ''; return; }
+    const sizes = [5, 10, 50, 100];
+    footer.innerHTML = `
+      <span style="font-size:0.82rem;color:var(--ink-soft)">Exibindo <strong>${shown}</strong> de <strong>${total}</strong> atividade${total>1?'s':''}</span>
+      <div class="pagesize-row">
+        <span>Mostrar:</span>
+        ${sizes.map(s => `<button class="pagesize-btn${pageSize===s?' active':''}" onclick="setPageSize(${s})">${s}</button>`).join('')}
+      </div>
+    `;
+  }
+
+  window.setPageSize = (size) => {
+    pageSize = size;
+    renderList();
+  };
+
+  window.toggleConcluido = () => {
+    showConcluido = !showConcluido;
+    const btn = document.getElementById('btnConcluido');
+    btn.classList.toggle('active', showConcluido);
+    btn.textContent = showConcluido ? '📋 Ver todas' : '✅ Concluídas';
+    renderCurrent();
+  };
+
+  window.switchTab = (name, btn) => {
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    btn.classList.add('active');
+    if (name==='graficos') renderCharts();
+    if (name==='admin') { loadUsers(); loadTypes(); }
+  };
+
+  window.setPeriod = (days, btn) => {
+    chartPeriod = days;
+    document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); renderCharts();
+  };
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent   = activities.length;
+    document.getElementById('statDone').textContent    = activities.filter(a=>a.status==='Concluído').length;
+    document.getElementById('statPending').textContent = activities.filter(a=>a.status==='Pendente').length;
+    document.getElementById('statToday').textContent   = activities.filter(a=>a.date===today).length;
+  }
+
+  function renderList() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let list = currentFilter==='Todos' ? activities : activities.filter(a=>a.type===currentFilter);
+    if (showConcluido) list = list.filter(a => a.status === 'Concluído');
+    else list = list.filter(a => a.status !== 'Concluído');
+    if (search) list = list.filter(a=>
+      a.title.toLowerCase().includes(search)||
+      (a.contact||'').toLowerCase().includes(search)||
+      (a.notes||'').toLowerCase().includes(search)
+    );
+    const el = document.getElementById('activityList');
+    if (!list.length) {
+      el.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>Nenhuma atividade encontrada.<br>Registre a sua primeira atividade acima!</p></div>';
+      renderListFooter(0, 0);
+      return;
+    }
+    const total = list.length;
+    list = list.slice(0, pageSize);
+    el.innerHTML = list.map(a => {
+      const dateStr = a.date ? new Date(a.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      const noteCount = (notesCache[a.id] || []).length;
+      const notesLabel = noteCount > 0 ? `💬 ${noteCount} nota${noteCount>1?'s':''}` : '💬 Notas';
+      return `<div class="activity-item" id="card-${a.id}">
+        <div class="activity-dot" style="background:${getTypeColor(a.type)}"></div>
+        <div class="activity-body">
+          <div class="activity-title">${h(a.title)}</div>
+          <div class="activity-meta">
+            <span style="${isKnownType(a.type)?'':`color:var(--ink-soft);text-decoration:line-through`}">📌 ${a.type}</span>
+            ${a.contact?`<span>👤 ${h(a.contact)}</span>`:''}
+            ${dateStr?`<span>📅 ${dateStr}</span>`:''}
+            ${a.createdBy?`<span>✍️ ${h(a.createdBy)}</span>`:''}
+            ${a.scheduled?`<span class="scheduled-badge">📅 ${a.timeStart||''} – ${a.timeEnd||''}</span>`:''}
+          </div>
+          ${a.notes?`<div class="activity-notes" onclick="zoomImg(event)">${a.notes}</div>`:''}
+          <button class="notes-toggle" onclick="toggleNotes('${a.id}','${a.status}')">${notesLabel}</button>
+          <div class="notes-panel" id="notes-panel-${a.id}"></div>
+        </div>
+        <span class="badge badge-${a.status}">${a.status}</span>
+        <div class="action-btns">
+          <button class="icon-btn" onclick="openEdit('${a.id}')" title="Editar">✏️</button>
+          <button class="icon-btn delete" onclick="deleteActivity('${a.id}')" title="Excluir">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+    renderListFooter(total, list.length);
+    // Re-open panels that were open before re-render
+    openNotePanels.forEach(id => {
+      const activity = activities.find(a => a.id === id);
+      if (!activity) return;
+      const panel = document.getElementById('notes-panel-' + id);
+      if (panel) {
+        panel.classList.add('open');
+        renderNotesPanel(id, activity.status);
+      }
+    });
+  }
+
+  // ── CHARTS ────────────────────────────────────────────
+  const TYPE_COLORS   = {'Reunião':'#4A7C59','Ligação':'#2D6DC4','Tarefa':'#C4622D','Email':'#7C4A7C','Visita':'#C4962D','Outros':'#7A6E5F'};
+  const STATUS_COLORS = {'Concluído':'#4A7C59','Em andamento':'#2D6DC4','Pendente':'#C4962D','Cancelado':'#C4322D'};
+  Chart.defaults.font.family = "'DM Sans',sans-serif";
+  Chart.defaults.color = '#7A6E5F';
+
+  function periodData() {
+    if (chartPeriod===0) return activities;
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-chartPeriod);
+    return activities.filter(a=>a.date && a.date>=cutoff.toISOString().split('T')[0]);
+  }
+  function noData(id) { document.getElementById(id).innerHTML='<div class="no-data"><span style="font-size:2rem">📊</span><span>Sem dados no período</span></div>'; }
+  function resetCanvas(wId,cId) {
+    if (charts[cId]) { charts[cId].destroy(); delete charts[cId]; }
+    document.getElementById(wId).innerHTML=`<canvas id="${cId}"></canvas>`;
+    return document.getElementById(cId);
+  }
+
+  window.renderCharts = () => {
+    const data = periodData();
+    if (!data.length) { ['wType','wStatus','wTimeline','wCompletion','wWeek'].forEach(noData); return; }
+    buildType(data); buildStatus(data); buildTimeline(data); buildCompletion(data); buildWeek(data);
+  };
+
+  function buildType(data) {
+    const c={}; data.forEach(a=>c[a.type]=(c[a.type]||0)+1);
+    const lb=Object.keys(c),vl=Object.values(c);
+    charts['cType']=new Chart(resetCanvas('wType','cType'),{type:'doughnut',
+      data:{labels:lb,datasets:[{data:vl,backgroundColor:lb.map(l=>TYPE_COLORS[l]||'#999'),borderWidth:2,borderColor:'#FFFDF8'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,padding:12,font:{size:11}}}}}});
+  }
+  function buildStatus(data) {
+    const c={}; data.forEach(a=>c[a.status]=(c[a.status]||0)+1);
+    const lb=Object.keys(c),vl=Object.values(c);
+    charts['cStatus']=new Chart(resetCanvas('wStatus','cStatus'),{type:'pie',
+      data:{labels:lb,datasets:[{data:vl,backgroundColor:lb.map(l=>STATUS_COLORS[l]||'#999'),borderWidth:2,borderColor:'#FFFDF8'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:12,padding:12,font:{size:11}}}}}});
+  }
+  function buildTimeline(data) {
+    const bd={}; data.filter(a=>a.date).forEach(a=>bd[a.date]=(bd[a.date]||0)+1);
+    const s=Object.keys(bd).sort();
+    charts['cTimeline']=new Chart(resetCanvas('wTimeline','cTimeline'),{type:'bar',
+      data:{labels:s.map(d=>{const[,m,dy]=d.split('-');return`${dy}/${m}`;}),datasets:[{label:'Atividades',data:s.map(d=>bd[d]),backgroundColor:'rgba(196,98,45,0.65)',borderColor:'#C4622D',borderWidth:1,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+  }
+  function buildCompletion(data) {
+    const types=['Reunião','Ligação','Tarefa','Email','Visita','Outros'],tot={},dn={};
+    types.forEach(t=>{tot[t]=0;dn[t]=0;});
+    data.forEach(a=>{if(tot[a.type]!==undefined){tot[a.type]++;if(a.status==='Concluído')dn[a.type]++;}});
+    const ft=types.filter(t=>tot[t]>0);
+    charts['cCompletion']=new Chart(resetCanvas('wCompletion','cCompletion'),{type:'bar',
+      data:{labels:ft,datasets:[{label:'% Concluído',data:ft.map(t=>Math.round(dn[t]/tot[t]*100)),backgroundColor:ft.map(t=>TYPE_COLORS[t]+'BB'),borderColor:ft.map(t=>TYPE_COLORS[t]),borderWidth:1.5,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,0.05)'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+  }
+  function buildWeek(data) {
+    const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],cnt=[0,0,0,0,0,0,0];
+    data.filter(a=>a.date).forEach(a=>cnt[new Date(a.date+'T12:00:00').getDay()]++);
+    charts['cWeek']=new Chart(resetCanvas('wWeek','cWeek'),{type:'bar',
+      data:{labels:days,datasets:[{data:cnt,backgroundColor:cnt.map((_,i)=>i===0||i===6?'rgba(196,98,45,0.4)':'rgba(74,124,89,0.65)'),borderColor:cnt.map((_,i)=>i===0||i===6?'#C4622D':'#4A7C59'),borderWidth:1.5,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.05)'}},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+  }
+
+
+  // ── IMAGE PASTE ───────────────────────────────────────
+  function setupPaste(editorId) {
+    const el = document.getElementById(editorId);
+    if (!el) return;
+    el.addEventListener('paste', async e => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          const base64 = await fileToBase64(file, 800);
+          const img = `<img src="${base64}" alt="imagem">`;
+          document.execCommand('insertHTML', false, img);
+          return;
+        }
+      }
+    });
+  }
+
+  function fileToBase64(file, maxWidth) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const imgEl = new Image();
+        imgEl.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = imgEl.width, h = imgEl.height;
+          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(imgEl, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        imgEl.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressNotesImages(html) {
+    // Parse and re-compress any images in the notes HTML
+    const parser = new DOMParser();
+    const doc2 = parser.parseFromString('<div>' + html + '</div>', 'text/html');
+    const imgs = doc2.querySelectorAll('img');
+    for (const img of imgs) {
+      if (img.src.startsWith('data:')) {
+        img.src = await new Promise(resolve => {
+          const i = new Image();
+          i.onload = () => {
+            const c = document.createElement('canvas');
+            let w = i.width, h = i.height;
+            if (w > 800) { h = Math.round(h*800/w); w = 800; }
+            c.width=w; c.height=h;
+            c.getContext('2d').drawImage(i,0,0,w,h);
+            resolve(c.toDataURL('image/jpeg', 0.7));
+          };
+          i.src = img.src;
+        });
+      }
+    }
+    return doc2.querySelector('div').innerHTML;
+  }
+
+  window.zoomImg = e => {
+    if (e.target.tagName === 'IMG') {
+      document.getElementById('lightboxImg').src = e.target.src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+  };
+
+  // Setup paste on both editors after DOM is ready
+  setTimeout(() => { setupPaste('fNotes'); setupPaste('eFNotes'); }, 500);
+  // Re-setup on modal open
+  const _origOpenEdit = window.openEdit;
+  window.openEdit = id => { _origOpenEdit(id); setTimeout(() => setupPaste('eFNotes'), 100); };
+
+
+
+  // ── VIEW SWITCHER ─────────────────────────────────────
+  let dragSrcId = null;
+
+  window.switchView = (view) => {
+    currentView = view;
+    document.getElementById('listView').style.display   = view==='list'   ? 'block' : 'none';
+    document.getElementById('kanbanView').style.display = view==='kanban' ? 'block' : 'none';
+    document.getElementById('viewBtnList').classList.toggle('active',   view==='list');
+    document.getElementById('viewBtnKanban').classList.toggle('active', view==='kanban');
+    // hide list filters when in kanban (keep search)
+    document.querySelectorAll('#filtersRow .filter-btn').forEach(b => {
+      b.style.display = view==='kanban' ? 'none' : '';
+    });
+    renderCurrent();
+  };
+
+  window.renderCurrent = () => {
+    if (currentView === 'kanban') renderKanban();
+    else renderList();
+  };
+
+  function buildKanbanCard(a, status) {
+    const noteCount = (notesCache[a.id]||[]).length;
+    const dateStr = a.date ? new Date(a.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}) : '';
+    return `<div class="kanban-card" draggable="true"
+        data-id="${a.id}"
+        ondragstart="onDragStart(event,'${a.id}')"
+        ondragend="onDragEnd(event)"
+        onclick="onKanbanCardClick(event,'${a.id}')">
+      <div class="kanban-card-title">${h(a.title)}</div>
+      <div class="kanban-card-meta">
+        <span class="kanban-card-type">
+          <span class="kanban-card-dot" style="background:${getTypeColor(a.type)}"></span>
+          ${h(a.type)}
+        </span>
+        ${a.contact   ? `<span>👤 ${h(a.contact)}</span>`     : ''}
+        ${dateStr     ? `<span>📅 ${dateStr}</span>`           : ''}
+        ${a.scheduled ? `<span>🕐 ${a.timeStart||''}</span>`  : ''}
+      </div>
+      <div class="kanban-card-actions">
+        ${noteCount ? `<span class="kanban-note-badge" onclick="openCardNotes('${a.id}','${status}')">💬 ${noteCount}</span>` : ''}
+        <button class="icon-btn" onclick="openEdit('${a.id}')" title="Editar">✏️</button>
+        <button class="icon-btn delete" onclick="deleteActivity('${a.id}')" title="Excluir">🗑️</button>
+      </div>
+    </div>`;
+  }
+
+  function renderKanban() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let list = activities;
+    if (search) list = list.filter(a =>
+      a.title.toLowerCase().includes(search) ||
+      (a.contact||'').toLowerCase().includes(search)
+    );
+
+    const board = document.getElementById('kanbanBoard');
+
+    // ── Pendente & Em andamento: all cards, scrollable ──
+    const mainCols = ['Pendente','Em andamento'].map(status => {
+      const cards = list.filter(a => a.status === status);
+      const cardsHtml = cards.length
+        ? cards.map(a => buildKanbanCard(a, status)).join('')
+        : `<div style="font-size:0.8rem;color:var(--ink-soft);text-align:center;padding:20px 0;opacity:0.6">Sem atividades</div>`;
+      return `<div class="kanban-col">
+        <div class="kanban-col-header status-${status}">
+          <span class="kanban-col-title">${status}</span>
+          <span class="kanban-count">${cards.length}</span>
+        </div>
+        <div class="kanban-cards"
+          ondragover="onDragOver(event)"
+          ondragleave="onDragLeave(event)"
+          ondrop="onDrop(event,'${status}')">
+          ${cardsHtml}
+        </div>
+      </div>`;
+    });
+
+    // ── Concluído: only the most recent card ──
+    const allDone  = list.filter(a => a.status === 'Concluído');
+    const lastDone = allDone.length ? allDone[0] : null; // already ordered by createdAt desc
+    const doneCardHtml = lastDone
+      ? buildKanbanCard(lastDone, 'Concluído')
+      : `<div style="font-size:0.8rem;color:var(--ink-soft);text-align:center;padding:20px 0;opacity:0.6">Arraste aqui</div>`;
+    const doneHint = allDone.length > 1
+      ? `<div style="font-size:0.72rem;color:var(--ink-soft);text-align:center;padding:4px 10px 8px;"> +${allDone.length - 1} na lista</div>`
+      : '';
+    const doneCol = `<div class="kanban-col col-concluido">
+      <div class="kanban-col-header status-Concluído">
+        <span class="kanban-col-title">Concluído</span>
+        <span class="kanban-count">${allDone.length}</span>
+      </div>
+      <div class="kanban-cards"
+        ondragover="onDragOver(event)"
+        ondragleave="onDragLeave(event)"
+        ondrop="onDrop(event,'Concluído')"
+        style="max-height:none;overflow:visible;">
+        ${doneCardHtml}
+        ${doneHint}
+      </div>
+    </div>`;
+
+    board.innerHTML = [...mainCols, doneCol].join('');
+  }
+
+
+  // ── VIEW MODAL ────────────────────────────────────────
+  window.openViewModal = async (id) => {
+    const a = activities.find(a => a.id === id);
+    if (!a) return;
+
+    // Title
+    document.getElementById('vmTitle').textContent = a.title;
+
+    // Badges
+    const dateStr = a.date ? new Date(a.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}) : '';
+    document.getElementById('vmBadges').innerHTML = `
+      <span class="badge badge-${a.status}">${a.status}</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.78rem;background:var(--bg);border:1px solid var(--border);padding:2px 10px;border-radius:20px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${getTypeColor(a.type)};display:inline-block"></span>
+        ${h(a.type)}
+      </span>
+      ${a.scheduled ? '<span class="scheduled-badge">📅 ' + (a.timeStart||'') + ' – ' + (a.timeEnd||'') + '</span>' : ''}
+    `;
+
+    // Fields
+    document.getElementById('vmFields').innerHTML = `
+      ${a.contact ? '<div class="view-field"><div class="view-field-label">Contato / Empresa</div><div class="view-field-value">👤 ' + h(a.contact) + '</div></div>' : ''}
+      ${dateStr   ? '<div class="view-field"><div class="view-field-label">Data</div><div class="view-field-value">📅 ' + dateStr + '</div></div>' : ''}
+      ${a.createdBy ? '<div class="view-field"><div class="view-field-label">Criado por</div><div class="view-field-value">✍️ ' + h(a.createdBy) + '</div></div>' : ''}
+      ${a.scheduled && a.reminderMin ? '<div class="view-field"><div class="view-field-label">Lembrete</div><div class="view-field-value">⏰ ' + (a.reminderMin >= 1440 ? '1 dia' : a.reminderMin >= 60 ? (a.reminderMin/60) + 'h' : a.reminderMin + ' min') + ' antes</div></div>' : ''}
+      ${a.guests && a.guests.length ? '<div class="view-field" style="grid-column:1/-1"><div class="view-field-label">Convidados</div><div class="view-field-value">' + a.guests.map(g => '✉️ ' + h(g)).join(' &nbsp;') + '</div></div>' : ''}
+    `;
+
+    // Observações
+    document.getElementById('vmObservacoes').innerHTML = a.notes
+      ? '<div class="view-field"><div class="view-field-label">Observações</div><div class="view-field-value" onclick="zoomImg(event)">' + a.notes + '</div></div>'
+      : '';
+
+    // Notes (load from Firestore if not cached)
+    const notesEl = document.getElementById('vmNotesSection');
+    notesEl.innerHTML = '<div class="view-field-label" style="margin-top:8px">Notas</div><div style="font-size:0.82rem;color:var(--ink-soft)">Carregando...</div>';
+
+    if (!noteListeners[id]) {
+      const { query: q2, collection: col2, orderBy: ob2, onSnapshot: ons2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    }
+    const cached = notesCache[id];
+    renderViewNotes(notesEl, cached || []);
+
+    // Subscribe if not yet
+    if (!noteListeners[id]) {
+      const qn = query(collection(db, 'activities', id, 'notes'), orderBy('createdAt','asc'));
+      noteListeners[id] = onSnapshot(qn, snap => {
+        notesCache[id] = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        const el = document.getElementById('vmNotesSection');
+        if (el) renderViewNotes(el, notesCache[id]);
+        // update toggle in list view
+        const toggle = document.querySelector('#card-' + id + ' .notes-toggle');
+        if (toggle) { const c = notesCache[id].length; toggle.textContent = c > 0 ? '💬 ' + c + ' nota' + (c>1?'s':'') : '💬 Notas'; }
+      });
+    }
+
+    // Edit button
+    document.getElementById('vmEditBtn').onclick = () => { closeViewModal(); openEdit(id); };
+
+    // Close on backdrop
+    document.getElementById('viewModal').classList.add('open');
+  };
+
+  function renderViewNotes(el, notes) {
+    if (!notes.length) {
+      el.innerHTML = '<div class="view-field-label" style="margin-top:8px">Notas</div><div style="font-size:0.82rem;color:var(--ink-soft);margin-top:4px">Nenhuma nota registrada.</div>';
+      return;
+    }
+    el.innerHTML = '<div class="view-field-label" style="margin-top:16px">Notas (' + notes.length + ')</div><div class="view-notes-list">' +
+      notes.map(n => {
+        const dateStr = n.createdAt
+          ? new Date(n.createdAt.seconds ? n.createdAt.seconds*1000 : n.createdAt)
+              .toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+          : '';
+        return '<div class="view-note-item"><div class="view-note-header"><span class="view-note-author">✍️ ' + h(n.author||'Usuário') + '</span><span class="view-note-date">' + dateStr + '</span></div><div class="view-note-text" onclick="zoomImg(event)">' + n.text + '</div></div>';
+      }).join('') + '</div>';
+  }
+
+
+  window.openNovaModal = () => {
+    clearForm();
+    document.getElementById('novaModal').classList.add('open');
+    setTimeout(() => { setupPaste('fNotes'); document.getElementById('fTitle').focus(); }, 100);
+  };
+
+  window.closeNovaModal = () => {
+    document.getElementById('novaModal').classList.remove('open');
+    clearForm();
+  };
+
+  document.getElementById('novaModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('novaModal')) closeNovaModal();
+  });
+
+  window.closeViewModal = () => {
+    document.getElementById('viewModal').classList.remove('open');
+  };
+  document.getElementById('viewModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('viewModal')) closeViewModal();
+  });
+
+  // Distinguish click from drag on kanban cards
+  let dragMoved = false;
+  window.onKanbanCardClick = (e, id) => {
+    // Don't open modal if click was on a button/badge or if card was dragged
+    if (e.target.closest('button') || e.target.closest('.kanban-note-badge')) return;
+    if (dragMoved) { dragMoved = false; return; }
+    openViewModal(id);
+  };
+
+  // ── DRAG & DROP ───────────────────────────────────────
+  window.onDragStart = (e, id) => {
+    dragSrcId = id;
+    dragMoved = true;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.target.classList.add('dragging'), 0);
+  };
+
+  window.onDragEnd = (e) => {
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.kanban-cards').forEach(c => c.classList.remove('drag-over'));
+  };
+
+  window.onDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('drag-over');
+  };
+
+  window.onDragLeave = (e) => {
+    e.currentTarget.classList.remove('drag-over');
+  };
+
+  window.onDrop = async (e, newStatus) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!dragSrcId) return;
+    const activity = activities.find(a => a.id === dragSrcId);
+    if (!activity || activity.status === newStatus) return;
+    setSync('saving');
+    await updateDoc(doc(db, 'activities', dragSrcId), { status: newStatus });
+    dragSrcId = null;
+  };
+
+  // Open notes modal from kanban card
+  window.openCardNotes = (activityId, status) => {
+    // Switch to list view, scroll to card and open notes
+    switchView('list');
+    setTimeout(() => {
+      const card = document.getElementById('card-' + activityId);
+      if (card) {
+        card.scrollIntoView({ behavior:'smooth', block:'center' });
+        const panel = document.getElementById('notes-panel-' + activityId);
+        if (panel && !panel.classList.contains('open')) {
+          card.querySelector('.notes-toggle').click();
+        }
+      }
+    }, 200);
+  };
+
+
+
+  // ── GUESTS ───────────────────────────────────────────
+  const guestLists = { f: [], eF: [] };
+
+  window.addGuest = (prefix) => {
+    const input = document.getElementById(prefix + 'GuestInput');
+    const email = input.value.trim().toLowerCase();
+    if (!email) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) { input.style.borderColor='var(--danger)'; setTimeout(()=>input.style.borderColor='',1500); return; }
+    if (guestLists[prefix].includes(email)) { input.value=''; return; }
+    guestLists[prefix].push(email);
+    input.value = '';
+    renderGuestTags(prefix);
+  };
+
+  window.removeGuest = (prefix, email) => {
+    guestLists[prefix] = guestLists[prefix].filter(e => e !== email);
+    renderGuestTags(prefix);
+  };
+
+  function renderGuestTags(prefix) {
+    const el = document.getElementById(prefix + 'GuestTags');
+    if (!el) return;
+    el.innerHTML = guestLists[prefix].map(email =>
+      `<span class="guest-tag">
+        ✉️ ${h(email)}
+        <button onclick="removeGuest('${prefix}','${h(email)}')" title="Remover">×</button>
+      </span>`
+    ).join('');
+  }
+
+  // Allow Enter key to add guest
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.id === 'fGuestInput')  { e.preventDefault(); addGuest('f');  }
+    if (e.key === 'Enter' && e.target.id === 'eFGuestInput') { e.preventDefault(); addGuest('eF'); }
+  });
+
+  // ── GOOGLE CALENDAR OAUTH ────────────────────────────
+  const GCAL_CLIENT_ID = '199509714780-03kli5srbuua8ocfoelg2uc7mbur3ndq.apps.googleusercontent.com';
+  const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+  let googleToken = null;
+  let tokenClient = null;
+
+  function initGoogleAuth() {
+    if (typeof google === 'undefined') {
+      setTimeout(initGoogleAuth, 500);
+      return;
+    }
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: GCAL_SCOPE,
+      callback: (resp) => {
+        if (resp.error) { showGcalStatus('Erro ao conectar: ' + resp.error, false); return; }
+        googleToken = resp.access_token;
+        updateGcalUI(true);
+      }
+    });
+    // Restore token from session
+    const saved = sessionStorage.getItem('gcal_token');
+    if (saved) { googleToken = saved; updateGcalUI(true); }
+  }
+
+  window.connectGoogle = () => {
+    if (!tokenClient) { alert('Aguarde o carregamento do Google...'); return; }
+    if (googleToken) {
+      // Already connected - revoke
+      google.accounts.oauth2.revoke(googleToken, () => {
+        googleToken = null;
+        sessionStorage.removeItem('gcal_token');
+        updateGcalUI(false);
+      });
+    } else {
+      tokenClient.requestAccessToken();
+    }
+  };
+
+  function updateGcalUI(connected) {
+    if (googleToken) sessionStorage.setItem('gcal_token', googleToken);
+    const btns  = ['gcalConnectBtn','gcalConnectBtnModal'];
+    const stats = ['gcalStatus','gcalStatusModal'];
+    btns.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (connected) {
+        el.className = 'gcal-btn connected';
+        el.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Google Conectado ✓';
+      } else {
+        el.className = 'gcal-btn';
+        el.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"> Conectar Google';
+      }
+    });
+    stats.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = connected ? 'Conta conectada! O evento será criado ao salvar.' : 'Conecte sua conta Google para habilitar';
+      el.style.color = connected ? '#4A7C59' : '';
+    });
+  }
+
+  window.toggleSchedule = (prefix) => {
+    const chk    = document.getElementById(prefix + 'ScheduleCheck');
+    const fields = document.getElementById(prefix + 'ScheduleFields');
+    fields.classList.toggle('open', chk.checked);
+  };
+
+  async function createCalendarEvent(activity, timeStart, timeEnd, reminderMin, guests) {
+    if (!googleToken) return null;
+    const date = activity.date;
+    const startDt = date + 'T' + timeStart + ':00';
+    const endDt   = date + 'T' + timeEnd   + ':00';
+
+    const event = {
+      summary: activity.title,
+      description: (function(){
+        const parts = [];
+        if (activity.contact) parts.push('Contato: ' + activity.contact);
+        if (activity.type)    parts.push('Tipo: ' + activity.type);
+        if (activity.notes)   parts.push('Observações: ' + activity.notes.replace(/<[^>]+>/g, ''));
+        return parts.join('\n');
+      })(),
+      start: { dateTime: startDt, timeZone: 'America/Sao_Paulo' },
+      end:   { dateTime: endDt,   timeZone: 'America/Sao_Paulo' },
+      attendees: (guests || []).map(email => ({ email })),
+      guestsCanSeeOtherGuests: true,
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email',  minutes: parseInt(reminderMin) },
+          { method: 'popup',  minutes: parseInt(reminderMin) }
+        ]
+      }
+    };
+
+    try {
+      const resp = await fetch(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + googleToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(event)
+        }
+      );
+      if (!resp.ok) {
+        if (resp.status === 401) { googleToken = null; updateGcalUI(false); }
+        throw new Error('Google API error: ' + resp.status);
+      }
+      const data = await resp.json();
+      return data.id; // Google Calendar event ID
+    } catch(e) {
+      console.error('Calendar error:', e);
+      showGcalStatus('Erro ao criar evento: ' + e.message, false);
+      return null;
+    }
+  }
+
+  function showGcalStatus(msg, ok) {
+    ['gcalStatus','gcalStatusModal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg; el.style.color = ok ? '#4A7C59' : '#C4322D'; }
+    });
+  }
+
+  function isFutureDateTime(date, time) {
+    if (!date || !time) return false;
+    return new Date(date + 'T' + time) > new Date();
+  }
+
+  // Init after DOM ready
+  setTimeout(initGoogleAuth, 800);
+
+  // ── ACTIVITY NOTES ───────────────────────────────────
+  const noteListeners = {}; // activityId -> unsubscribe fn
+
+  window.toggleNotes = (activityId, status) => {
+    const panel = document.getElementById('notes-panel-' + activityId);
+    if (!panel) return;
+    const isOpen = panel.classList.contains('open');
+    if (isOpen) {
+      panel.classList.remove('open');
+      openNotePanels.delete(activityId);
+      return;
+    }
+    openNotePanels.add(activityId);
+    panel.classList.add('open');
+    renderNotesPanel(activityId, status);
+    // Subscribe to live updates for this activity's notes
+    if (!noteListeners[activityId]) {
+      const q = query(
+        collection(db, 'activities', activityId, 'notes'),
+        orderBy('createdAt', 'asc')
+      );
+      noteListeners[activityId] = onSnapshot(q, snap => {
+        notesCache[activityId] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Update toggle button count
+        const toggle = document.querySelector(`#card-${activityId} .notes-toggle`);
+        if (toggle) {
+          const c = notesCache[activityId].length;
+          toggle.textContent = c > 0 ? `💬 ${c} nota${c>1?'s':''}` : '💬 Notas';
+        }
+        // Re-render panel if open
+        const p = document.getElementById('notes-panel-' + activityId);
+        if (p && p.classList.contains('open')) {
+          const activity = activities.find(a => a.id === activityId);
+          renderNotesPanel(activityId, activity ? activity.status : status);
+        }
+      });
+    }
+  };
+
+  function renderNotesPanel(activityId, status) {
+    const panel = document.getElementById('notes-panel-' + activityId);
+    if (!panel) return;
+    const notes = notesCache[activityId] || [];
+    const isBlocked = status === 'Concluído';
+
+    const notesHtml = notes.length
+      ? notes.map(n => {
+          const dateStr = n.createdAt
+            ? new Date(n.createdAt.seconds ? n.createdAt.seconds*1000 : n.createdAt)
+                .toLocaleString('pt-BR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+            : '';
+          return `<div class="note-item">
+            <div class="note-header">
+              <span class="note-author">✍️ ${h(n.author||'Usuário')}</span>
+              <span class="note-date">${dateStr}</span>
+            </div>
+            <div class="note-text" onclick="zoomImg(event)">${n.text}</div>
+          </div>`;
+        }).join('')
+      : `<div style="font-size:0.82rem;color:var(--ink-soft);padding:4px 0">Nenhuma nota ainda.</div>`;
+
+    const inputHtml = isBlocked
+      ? `<div class="note-blocked">🔒 Esta atividade está <strong>Concluída</strong>. Altere o status para adicionar novas notas.</div>`
+      : `<div class="note-input-area">
+          <div id="noteInput-${activityId}" class="notes-editor" contenteditable="true" data-placeholder="Escreva uma nota... Cole imagens com Ctrl+V"></div>
+          <button class="btn-note" onclick="saveNote('${activityId}')">Adicionar nota</button>
+        </div>`;
+
+    panel.innerHTML = notesHtml + inputHtml;
+
+    // Setup paste on new note input
+    if (!isBlocked) {
+      setTimeout(() => setupPaste('noteInput-' + activityId), 100);
+    }
+  }
+
+  window.saveNote = async (activityId) => {
+    const inputEl = document.getElementById('noteInput-' + activityId);
+    if (!inputEl) return;
+    const raw = inputEl.innerHTML.trim();
+    if (!raw || raw === '<br>') return;
+    const text = await compressNotesImages(raw);
+    await addDoc(collection(db, 'activities', activityId, 'notes'), {
+      text,
+      author:    currentUser.displayName || currentUser.email,
+      createdAt: serverTimestamp()
+    });
+    inputEl.innerHTML = '';
+  };
+
+  function h(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+<div class="modal-overlay" id="novaModal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-title">Nova Atividade</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Título *</label><input type="text" id="fTitle" placeholder="Ex: Reunião com cliente João Silva"></div>
+      <div class="form-group"><label>Tipo</label>
+        <select id="fType"><option>Reunião</option><option>Ligação</option><option>Tarefa</option><option>Email</option><option>Visita</option><option>Outros</option></select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="fStatus"><option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Cancelado</option></select>
+      </div>
+      <div class="form-group"><label>Contato / Empresa</label><input type="text" id="fContact" placeholder="Ex: João Silva — ABC Ltda"></div>
+      <div class="form-group"><label>Data</label><input type="date" id="fDate"></div>
+      <div class="form-group full"><label>Observações</label><div id="fNotes" class="notes-editor" contenteditable="true" data-placeholder="Detalhes, próximos passos... Cole imagens com Ctrl+V"></div><div class="notes-hint">💡 Cole imagens diretamente com Ctrl+V</div></div>
+      <div class="form-group full">
+        <label>Agendamento</label>
+        <div class="schedule-toggle-row" onclick="document.getElementById('fScheduleCheck').click()">
+          <input type="checkbox" id="fScheduleCheck" onclick="event.stopPropagation();toggleSchedule('f')">
+          <span class="schedule-toggle-label">Agendar no Google Agenda com lembrete</span>
+          <span style="font-size:0.8rem;color:var(--ink-soft)">📅</span>
+        </div>
+        <div class="schedule-fields" id="fScheduleFields">
+          <div class="form-group">
+            <label>Horário início</label>
+            <input type="time" id="fTimeStart" value="09:00">
+          </div>
+          <div class="form-group">
+            <label>Horário fim</label>
+            <input type="time" id="fTimeEnd" value="10:00">
+          </div>
+          <div class="form-group">
+            <label>Lembrete (minutos antes)</label>
+            <select id="fReminder">
+              <option value="10">10 minutos</option>
+              <option value="30" selected>30 minutos</option>
+              <option value="60">1 hora</option>
+              <option value="1440">1 dia</option>
+            </select>
+          </div>
+          <div class="form-group" style="align-self:flex-end">
+            <div id="gcalConnectArea">
+              <button type="button" class="gcal-btn" id="gcalConnectBtn" onclick="connectGoogle()">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                Conectar Google
+              </button>
+              <div class="gcal-status" id="gcalStatus">Conecte sua conta Google para habilitar</div>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label>Convidados (receberão convite no Google Agenda)</label>
+            <div class="guest-input-row">
+              <input type="email" id="fGuestInput" placeholder="email@exemplo.com">
+              <button type="button" class="btn-secondary" onclick="addGuest('f')" style="white-space:nowrap">+ Adicionar</button>
+            </div>
+            <div class="guest-tags" id="fGuestTags"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeNovaModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveActivity()">Salvar Atividade</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+  <div class="view-modal">
+    <div class="view-modal-header">
+      <div>
+        <div class="view-modal-title" id="vmTitle"></div>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;" id="vmBadges"></div>
+      </div>
+      <button class="close-btn" onclick="closeViewModal()">✕</button>
+    </div>
+    <div class="view-modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;" id="vmFields"></div>
+      <div id="vmObservacoes"></div>
+      <div id="vmNotesSection"></div>
+    </div>
+    <div class="view-modal-footer">
+      <button class="btn-secondary" onclick="closeViewModal()">Fechar</button>
+      <button class="btn-primary" id="vmEditBtn" onclick="">✏️ Editar</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="document.getElementById('lightbox').classList.remove('open')">
+  <img id="lightboxImg" src="">
+</div>
+</body>
+</html>
